@@ -3,6 +3,7 @@ from urllib.parse import urlparse
 import os
 
 def run():
+    print("extract_url file is running")
     BASE_FOLDER = r'E:\VSCODE\scrap-link\data'
     # read URLs correctly
     with open("url.txt", "r", encoding="utf-8") as f:
@@ -43,3 +44,6 @@ def run():
 
         print(f"✅ Extracted {len(urls)} chapter URLs")
         print(f"💾 Saved to {output_file}")
+        
+if __name__ == "__main__":
+    run()
