@@ -1,48 +1,47 @@
 from DrissionPage import ChromiumPage, ChromiumOptions
+from urllib.parse import urlparse
 import json
 import os
 
-folder_path = r'E:\VSCODE\scrap-link\data'
-file_name = "chapters_url_list.txt"
+BASE_FOLDER = r'E:\VSCODE\scrap-link\data'
 
-novel_url = "https://novelbin.com/b/primordial-villain-with-a-slave-harem#tab-chapters-title"
+# read URLs correctly
+with open("url.txt", "r", encoding="utf-8") as f:
+    novel_urls = [line.strip() for line in f if line.strip()]
 
-
-# 1. Create an options object
+# browser setup
 co = ChromiumOptions()
-
-# 2. Set your browser path (Paste your path here)
-# Use 'r' before the string to handle backslashes correctly
 co.set_browser_path(r'C:\Program Files\Google\Chrome\Application\chrome.exe')
-
-# 3. Initialize the page with these options
 page = ChromiumPage(addr_or_opts=co)
 
-# Now your script should work
-page.listen.start('ajax/chapter-archive')
-page.get(novel_url)
+for novel_url in novel_urls:
+    print(f"\n📖 Opening: {novel_url}")
 
-print("Waiting for data...")
-res = page.listen.wait()
+    page.listen.start('ajax/chapter-archive')
+    page.get(novel_url)
 
-data = res.response.body
-print("\n--- Success! Data Captured ---")
+    print("⏳ Waiting for AJAX data...")
+    res = page.listen.wait(timeout=10)
 
+    if not res:
+        print("❌ No AJAX data captured")
+        continue
 
+    data = res.response.body
+    print("✅ Data captured")
 
-#if url have special name for example novelbin create folder first
-if "novelbin" in novel_url:
-    folder_path = os.path.join(folder_path, "novelbin")
-    novel_name = novel_url.replace("https://novelbin.com/b/", "").replace("#tab-chapters-title", "")
-    folder_path = os.path.join(folder_path, novel_name)
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-        print(f"Created folder: {folder_path}")
-    
-    file_name = novel_name + "_chapters_url_list.txt"
-    with open(os.path.join(folder_path, file_name), "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=4, ensure_ascii=False)
-        print(f"Data saved to {file_name} in folder {folder_path}")
+    # handle NovelBin
+    if "novelbin.com" in novel_url:
+        parsed = urlparse(novel_url)
+        novel_name = parsed.path.split("/b/")[1]
 
-    
+        novel_folder = os.path.join(BASE_FOLDER, "novelbin", novel_name)
+        os.makedirs(novel_folder, exist_ok=True)
+
+        file_path = os.path.join(novel_folder, "chapters_url_list.json")
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4, ensure_ascii=False)
+
+        print(f"💾 Saved to: {file_path}")
+
 page.quit()

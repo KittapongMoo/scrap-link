@@ -26,6 +26,8 @@ env/
 
 # Local data/output
 data/
+url.txt
+test.py
 
 # Browser drivers downloaded at runtime
 chromedriver*
