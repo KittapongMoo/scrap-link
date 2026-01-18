@@ -2,6 +2,7 @@ from DrissionPage import ChromiumPage, ChromiumOptions
 from urllib.parse import urlparse
 import json
 import os
+import extract_url
 
 BASE_FOLDER = r'E:\VSCODE\scrap-link\data'
 
@@ -45,3 +46,5 @@ for novel_url in novel_urls:
         print(f"💾 Saved to: {file_path}")
 
 page.quit()
+
+extract_url.run()
