@@ -109,46 +109,12 @@ def scrape_chapter(url, retries=3):
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 
 def scrape_chapter_playwright(url):
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False,
-            slow_mo=500  # slows actions (looks human)
-        )
-
-        context = browser.new_context(
-            viewport={"width": 1280, "height": 800},
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            )
-        )
-
-        page = context.new_page()
-
-        try:
-            page.goto(url, wait_until="domcontentloaded", timeout=60000)
-
-            # Wait for Cloudflare / JS to finish
-            page.wait_for_load_state("networkidle", timeout=60000)
-
-            # DEBUG: save screenshot if needed
-            # page.screenshot(path="debug.png")
-
-            page.wait_for_selector("#chr-content", timeout=60000)
-
-            paragraphs = page.locator("#chr-content p").all_inner_texts()
-
-            if not paragraphs:
-                raise Exception("Chapter content empty")
-
-            return "\n\n".join(paragraphs)
-
-        except PlaywrightTimeout:
-            raise Exception("Timeout waiting for chapter content")
-
-        finally:
-            browser.close()
+    page = context.new_page()
+    page.goto(url, wait_until="domcontentloaded", timeout=60000)
+    page.wait_for_selector("#chr-content", timeout=30000)
+    text = page.locator("#chr-content p").all_inner_texts()
+    page.close()
+    return "\n\n".join(text)
 
 
 def save_chapter(folder, url, content):
