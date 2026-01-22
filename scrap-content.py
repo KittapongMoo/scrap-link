@@ -7,30 +7,6 @@ import requests
 from playwright.sync_api import sync_playwright
 from bs4 import BeautifulSoup
 
-p = sync_playwright().start()
-
-browser = p.chromium.launch(
-    headless=False,
-    slow_mo=100
-)
-
-context = browser.new_context(
-    viewport={"width": 1280, "height": 800},
-    user_agent=(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    )
-)
-
-# Block heavy resources
-context.route(
-    "**/*",
-    lambda route: route.abort()
-    if route.request.resource_type in ["image", "font", "media"]
-    else route.continue_()
-)
-
 scraper = cloudscraper.create_scraper(
     browser={
         "browser": "chrome",
@@ -108,47 +84,47 @@ def scrape_chapter(url, retries=3):
 
 from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 
-def scrape_chapter_playwright(url):
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=False,
-            slow_mo=500  # slows actions (looks human)
-        )
-
-        context = browser.new_context(
-            viewport={"width": 1280, "height": 800},
-            user_agent=(
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            )
-        )
-
-        page = context.new_page()
-
+def scrape_chapter_playwright(url, retries=3):
+    for attempt in range(retries):
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=60000)
+            with sync_playwright() as p:
+                browser = p.chromium.launch(
+                    headless=False,
+                    slow_mo=500  # slows actions (looks human)
+                )
 
-            # Wait for Cloudflare / JS to finish
-            page.wait_for_load_state("networkidle", timeout=60000)
+                context = browser.new_context(
+                    viewport={"width": 1280, "height": 800},
+                    user_agent=(
+                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/120.0.0.0 Safari/537.36"
+                    )
+                )
 
-            # DEBUG: save screenshot if needed
-            # page.screenshot(path="debug.png")
+                page = context.new_page()
 
-            page.wait_for_selector("#chr-content", timeout=60000)
+                try:
+                    page.goto(url, wait_until="domcontentloaded", timeout=60000)
+                    page.wait_for_load_state("networkidle", timeout=60000)
+                    page.wait_for_selector("#chr-content", timeout=60000)
 
-            paragraphs = page.locator("#chr-content p").all_inner_texts()
+                    paragraphs = page.locator("#chr-content p").all_inner_texts()
 
-            if not paragraphs:
-                raise Exception("Chapter content empty")
+                    if not paragraphs:
+                        raise Exception("Chapter content empty")
 
-            return "\n\n".join(paragraphs)
+                    return "\n\n".join(paragraphs)
 
-        except PlaywrightTimeout:
-            raise Exception("Timeout waiting for chapter content")
+                finally:
+                    browser.close()
 
-        finally:
-            browser.close()
+        except (PlaywrightTimeout, Exception) as e:
+            if attempt < retries - 1:
+                print(f"⚠️ Retry {attempt + 1}/{retries} for {url}")
+                time.sleep(random.uniform(3, 7))
+            else:
+                raise Exception(f"Failed after {retries} retries: {e}")
 
 
 def save_chapter(folder, url, content):
@@ -183,7 +159,7 @@ def main():
         novel_name = novel_file
         novel_folder = create_novel_folder(novel_name)
 
-        for ch in novel_url[:2]:
+        for ch in novel_url[:10]:
             try:
                 print( "url:" + ch)
                 # break
