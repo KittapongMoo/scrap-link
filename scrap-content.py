@@ -129,7 +129,10 @@ def scrape_chapter_playwright(url, retries=3):
 
 def save_chapter(folder, url, content):
     title = url.split('/')[-1]  # Extract the title from the URL
-    chapter_no = int(url.split('-')[-1].split('/')[-1].replace('chapter-', ''))  # Extract the chapter number
+    # Extract chapter number from 'chapter-X' pattern in the URL
+    url_parts = url.split('/')
+    chapter_part = [p for p in url_parts if p.startswith('chapter-')][0]
+    chapter_no = int(chapter_part.replace('chapter-', '').split('-')[0])
     print("title :" + title)
     print("chapter_no :" + str(chapter_no))
     filename = f"{chapter_no:04d} - {sanitize_filename(title)}.txt"
@@ -158,10 +161,13 @@ def main():
         novel_name = novel_file
         novel_folder = create_novel_folder(novel_name)
 
-        for ch in novel_url:
+        for ch in novel_url[:3]:
             try:
                 title = ch.split('/')[-1]
-                chapter_no = int(ch.split('-')[-1].split('/')[-1].replace('chapter-', ''))
+                # Extract chapter number from 'chapter-X' pattern in the URL
+                url_parts = ch.split('/')
+                chapter_part = [p for p in url_parts if p.startswith('chapter-')][0]
+                chapter_no = int(chapter_part.replace('chapter-', '').split('-')[0])
                 filename = f"{chapter_no:04d} - {sanitize_filename(title)}.txt"
                 
                 if os.path.exists(os.path.join(novel_folder, filename)):
