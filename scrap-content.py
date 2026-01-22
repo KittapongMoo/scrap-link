@@ -125,8 +125,17 @@ def main():
         
         contents_folder = os.path.join(CONTENTS_DIR, novel_name)
         cur_chapter_no = check_chapter_no(contents_folder) if os.path.exists(contents_folder) else 1
-        print(f"Current chapter number starts from: {cur_chapter_no}")
-        num_chapters = input("How many chapters do you want to scrape? (default: all): ").strip()
+        
+        if cur_chapter_no == 0:
+            readed_chapters = input("What is the latest chapter number you have read? (if none, press Enter): ").strip()
+            if readed_chapters.isdigit():
+                cur_chapter_no = int(readed_chapters)
+            else:
+                cur_chapter_no = 0  # Start from beginning
+        else:
+            last_file = sorted([f for f in os.listdir(contents_folder) if f.endswith('.txt')])[-1]
+            print(f"Current chapter number starts from: {last_file}")
+        num_chapters = input("How many chapters do you want to scrape? (if all, press Enter): ").strip()
         num_chapters = int(num_chapters) if num_chapters.isdigit() else len(novel_url)
         
         for ch in novel_url[cur_chapter_no:cur_chapter_no+num_chapters]:
@@ -142,7 +151,7 @@ def main():
                     print(f"⏩ Skipped: {filename}")
                     continue
                 
-                # print("url:" + ch)
+                print(f"📖 processing: {filename}")
                 content = scrape_chapter_playwright(ch)
                 save_chapter(
                     novel_folder,
