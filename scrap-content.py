@@ -4,7 +4,7 @@ import time
 import cloudscraper
 import random
 import requests
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 from bs4 import BeautifulSoup
 
 scraper = cloudscraper.create_scraper(
@@ -40,50 +40,6 @@ def create_novel_folder(novel_name):
 
 def sanitize_filename(name):
     return "".join(c for c in name if c not in r'\/:*?"<>|')
-
-def scrape_chapter(url, retries=3):
-    headers = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/120.0.0.0 Safari/537.36"
-        ),
-        "Accept-Language": "en-US,en;q=0.9",
-        "Referer": "https://novelbin.com/"
-    }
-
-    for attempt in range(retries):
-        try:
-            response = scraper.get(
-                url,
-                headers=headers,
-                timeout=15
-            )
-            response.raise_for_status()
-
-            if "cloudflare" in response.text.lower():
-                raise Exception("Cloudflare block detected")
-
-            soup = BeautifulSoup(response.text, "html.parser")
-
-            content_div = soup.find("div", id="chr-content")
-            if not content_div:
-                raise Exception("Chapter content not found")
-
-            paragraphs = content_div.find_all("p")
-            return "\n\n".join(
-                p.get_text(strip=True)
-                for p in paragraphs
-                if p.get_text(strip=True)
-            )
-
-        except requests.exceptions.RequestException as e:
-            print(f"⚠️ Retry {attempt + 1}/{retries} for {url}")
-            time.sleep(random.uniform(3, 7))
-
-    raise Exception("Failed after retries")
-
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
 
 def scrape_chapter_playwright(url, retries=3):
     for attempt in range(retries):
@@ -173,7 +129,7 @@ def main():
         num_chapters = input("How many chapters do you want to scrape? (default: all): ").strip()
         num_chapters = int(num_chapters) if num_chapters.isdigit() else len(novel_url)
         
-        for ch in novel_url[:num_chapters]:
+        for ch in novel_url[cur_chapter_no:cur_chapter_no+num_chapters]:
             try:
                 title = ch.split('/')[-1]
                 # Extract chapter number from 'chapter-X' pattern in the URL
@@ -186,9 +142,8 @@ def main():
                     print(f"⏩ Skipped: {filename}")
                     continue
                 
-                print("url:" + ch)
+                # print("url:" + ch)
                 content = scrape_chapter_playwright(ch)
-                print("content:" + content[:500])
                 save_chapter(
                     novel_folder,
                     ch,
