@@ -17,6 +17,7 @@ scraper = cloudscraper.create_scraper(
 
 # ---------------- CONFIG ----------------
 NOVELS_DIR = "data/novelbin"
+CONTENTS_DIR = "data/novel_contents"
 OUTPUT_DIR = "data/novel_contents"
 DELAY = 1  # seconds between requests
 # ----------------------------------------
@@ -89,7 +90,7 @@ def scrape_chapter_playwright(url, retries=3):
         try:
             with sync_playwright() as p:
                 browser = p.chromium.launch(
-                    headless=False,
+                    headless=True,
                     slow_mo=500  # slows actions (looks human)
                 )
 
@@ -147,6 +148,11 @@ def save_chapter(folder, url, content):
 
     print(f"✅ Saved: {filename}")
     
+def check_chapter_no(novel_folder):
+    files = os.listdir(novel_folder)
+    chapter_files = [f for f in files if f.endswith('.txt')]
+    return len(chapter_files)
+    
 def main():
     novel_files = get_novel_files()
     #check contents
@@ -160,8 +166,14 @@ def main():
         
         novel_name = novel_file
         novel_folder = create_novel_folder(novel_name)
-
-        for ch in novel_url[:3]:
+        
+        contents_folder = os.path.join(CONTENTS_DIR, novel_name)
+        cur_chapter_no = check_chapter_no(contents_folder) if os.path.exists(contents_folder) else 1
+        print(f"Current chapter number starts from: {cur_chapter_no}")
+        num_chapters = input("How many chapters do you want to scrape? (default: all): ").strip()
+        num_chapters = int(num_chapters) if num_chapters.isdigit() else len(novel_url)
+        
+        for ch in novel_url[:num_chapters]:
             try:
                 title = ch.split('/')[-1]
                 # Extract chapter number from 'chapter-X' pattern in the URL
