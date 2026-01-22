@@ -143,7 +143,7 @@ def save_chapter(folder, url, content):
         f.write(content)
 
     print(f"✅ Saved: {filename}")
-
+    
 def main():
     novel_files = get_novel_files()
     #check contents
@@ -154,18 +154,23 @@ def main():
         novel_path = os.path.join(NOVELS_DIR, novel_file)
         print(f"🔍 Processing novel file: {novel_path}")
         novel_url = load_novel(novel_path)
-        # print(novel_url)
-
+        
         novel_name = novel_file
         novel_folder = create_novel_folder(novel_name)
 
-        for ch in novel_url[:10]:
+        for ch in novel_url:
             try:
-                print( "url:" + ch)
-                # break
+                title = ch.split('/')[-1]
+                chapter_no = int(ch.split('-')[-1].split('/')[-1].replace('chapter-', ''))
+                filename = f"{chapter_no:04d} - {sanitize_filename(title)}.txt"
+                
+                if os.path.exists(os.path.join(novel_folder, filename)):
+                    print(f"⏩ Skipped: {filename}")
+                    continue
+                
+                print("url:" + ch)
                 content = scrape_chapter_playwright(ch)
-                print("content:" + content[:100])
-                # break
+                print("content:" + content[:500])
                 save_chapter(
                     novel_folder,
                     ch,
